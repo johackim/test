@@ -10,6 +10,8 @@ jobs:
     steps:
       - name: Hello world
         run: echo "Hello world"
+      - name: Hello world
+        run: echo $GITHUB_TOKEN
       - env:
           MESSAGE: ${{ github.event.client_payload.message }}
         run: echo $MESSAGE
