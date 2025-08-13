@@ -1,1 +1,94 @@
-<p>Hello world</p>
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Mon site</title>
+<script>
+const POSTS = ["start","hello-world"];
+
+const slugFromPath = (pathname) => {
+  const s = pathname.replace(/\/+$/, '').slice(1);
+  return s || POSTS[0];
+};
+
+const fetchPost = async (slug) => {
+  const res = await fetch(`_posts/${slug}.md`, { cache: "no-store" });
+  if (!res.ok) throw new Error("404");
+  return res.text();
+};
+
+const escapeHtml = (s) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+
+const mdToHtml = (src) => {
+  let h = escapeHtml(src);
+  h = h.replace(/```([\s\S]*?)```/g, (m, c) => `<pre><code>${c.replace(/\n$/, "")}</code></pre>`);
+  h = h.replace(/^###\s+(.*)$/gm, "<h3>$1</h3>");
+  h = h.replace(/^##\s+(.*)$/gm, "<h2>$1</h2>");
+  h = h.replace(/^#\s+(.*)$/gm, "<h1>$1</h1>");
+  h = h.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
+  h = h.replace(/\*(.*?)\*/g, "<em>$1</em>");
+  h = h.replace(/`([^`]+)`/g, "<code>$1</code>");
+  h = h.replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2">$1</a>');
+  h = h.split(/\n{2,}/).map((p) => (/^<h[1-3]>/.test(p) || /^<pre>/.test(p) ? p : `<p>${p.replace(/\n/g, "<br>")}</p>`)).join("\n");
+  return h;
+};
+
+const renderNav = () => {
+  const nav = document.getElementById("nav");
+  nav.innerHTML = POSTS.map((s) => `<a href="/${s}">${s}</a>`).join("");
+};
+
+const render = async (slug) => {
+  const content = document.getElementById("content");
+  const title = document.getElementById("title");
+  try {
+    const md = await fetchPost(slug);
+    title.textContent = slug;
+    document.title = `${slug} — Mon site`;
+    content.innerHTML = `<article id="${slug}"><h2>${slug}</h2>${mdToHtml(md)}</article>`;
+    history.replaceState({}, "", `/${slug}`);
+  } catch (e) {
+    title.textContent = "404";
+    document.title = "404 — Mon site";
+    content.innerHTML = "<p>Introuvable.</p>";
+  }
+};
+
+const isInternal = (url) => url.origin === location.origin && url.pathname.startsWith("/");
+
+const navigateTo = (slug) => {
+  history.pushState({}, "", `/${slug}`);
+  render(slug);
+};
+
+window.addEventListener("DOMContentLoaded", async () => {
+  renderNav();
+
+  document.body.addEventListener("click", (e) => {
+    const a = e.target.closest("a");
+    if (!a) return;
+    const url = new URL(a.href, location.origin);
+    if (isInternal(url)) {
+      e.preventDefault();
+      const slug = slugFromPath(url.pathname);
+      if (POSTS.includes(slug)) navigateTo(slug);
+    }
+  });
+
+  window.addEventListener("popstate", () => {
+    const slug = slugFromPath(location.pathname);
+    render(slug);
+  });
+
+  const init = slugFromPath(location.pathname);
+  await render(POSTS.includes(init) ? init : POSTS[0]);
+});
+</script>
+</head>
+<body>
+<h1 id="title">Mon site</h1>
+<nav id="nav"></nav>
+<main id="content"></main>
+</body>
+</html> 
