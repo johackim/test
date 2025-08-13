@@ -8,8 +8,8 @@
 const POSTS = ["start","hello-world"];
 
 const slugFromPath = (pathname) => {
-  const s = pathname.replace(/\/+$/, '').slice(1);
-  return s || POSTS[0];
+  const parts = pathname.replace(/\/+$/, "").split("/").filter(Boolean);
+  return parts.length ? parts[parts.length - 1] : POSTS[0];
 };
 
 const fetchPost = async (slug) => {
@@ -36,7 +36,7 @@ const mdToHtml = (src) => {
 
 const renderNav = () => {
   const nav = document.getElementById("nav");
-  nav.innerHTML = POSTS.map((s) => `<a href="/${s}">${s}</a>`).join("");
+  nav.innerHTML = POSTS.map((s) => `<a href="${s}">${s}</a>`).join("");
 };
 
 const render = async (slug) => {
@@ -47,7 +47,7 @@ const render = async (slug) => {
     title.textContent = slug;
     document.title = `${slug} — Mon site`;
     content.innerHTML = `<article id="${slug}"><h2>${slug}</h2>${mdToHtml(md)}</article>`;
-    history.replaceState({}, "", `/${slug}`);
+    history.replaceState({}, "", slug);
   } catch (e) {
     title.textContent = "404";
     document.title = "404 — Mon site";
@@ -55,16 +55,15 @@ const render = async (slug) => {
   }
 };
 
-const isInternal = (url) => url.origin === location.origin && url.pathname.startsWith("/");
+const isInternal = (url) => url.origin === location.origin;
 
 const navigateTo = (slug) => {
-  history.pushState({}, "", `/${slug}`);
+  history.pushState({}, "", slug);
   render(slug);
 };
 
 window.addEventListener("DOMContentLoaded", async () => {
   renderNav();
-
   document.body.addEventListener("click", (e) => {
     const a = e.target.closest("a");
     if (!a) return;
@@ -75,12 +74,10 @@ window.addEventListener("DOMContentLoaded", async () => {
       if (POSTS.includes(slug)) navigateTo(slug);
     }
   });
-
   window.addEventListener("popstate", () => {
     const slug = slugFromPath(location.pathname);
     render(slug);
   });
-
   const init = slugFromPath(location.pathname);
   await render(POSTS.includes(init) ? init : POSTS[0]);
 });
